@@ -1,0 +1,21 @@
+server:
+  port: 8761
+
+spring:
+  application:
+    name: discovery-server
+
+eureka:
+  client:
+    # This IS the registry - it shouldn't register with itself or fetch a registry
+    register-with-eureka: false
+    fetch-registry: false
+  server:
+    # Fine for local/POC use - disables self-preservation so dead instances
+    # drop off the dashboard quickly instead of lingering
+    enable-self-preservation: false
+
+logging:
+  level:
+    com.netflix.eureka: OFF
+    com.netflix.discovery: OFF

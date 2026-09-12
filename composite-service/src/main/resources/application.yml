@@ -1,0 +1,55 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: composite-service
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true   # wires Resilience4j into every @FeignClient automatically
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      customer-service:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50        # trip open at 50% failures
+        wait-duration-in-open-state: 10s  # stay open 10s before trying again
+        permitted-number-of-calls-in-half-open-state: 3
+      order-service:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+  timelimiter:
+    instances:
+      customer-service:
+        timeout-duration: 3s
+      order-service:
+        timeout-duration: 3s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,circuitbreakers
+  health:
+    circuitbreakers:
+      enabled: true
+
+logging:
+  level:
+    com.poc.composite: DEBUG
+    io.github.resilience4j: DEBUG

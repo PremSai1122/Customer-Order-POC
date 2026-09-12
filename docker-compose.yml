@@ -1,0 +1,23 @@
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: keycloak-poc
+    # start-dev --import-realm resets the realm to realm-import.json's
+    # definition on every startup (Keycloak's import strategy is
+    # OVERWRITE_EXISTING) - deliberate here so the demo realm/client/user
+    # are always in a known state. If you start managing users/clients by
+    # hand through the Keycloak admin console and want those changes to
+    # survive a restart, drop "--import-realm" after the first run.
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8180:8080"
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+      - ./scripts/keycloak/realm-import.json:/opt/keycloak/data/import/realm-import.json:ro
+    restart: unless-stopped
+
+volumes:
+  keycloak-data:

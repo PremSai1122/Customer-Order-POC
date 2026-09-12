@@ -1,0 +1,55 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/auth_db
+    username: postgres
+    password: postgres
+  cloud:
+    gateway:
+      routes:
+        # Everything the client calls goes through the composite service,
+        # which itself talks to customer-service and order-service.
+        - id: composite-service
+          uri: lb://composite-service
+          predicates:
+            - Path=/api/composite/**
+
+        # Optional: expose the atomic services directly too, useful while
+        # you're testing each one in isolation.
+        - id: customer-service
+          uri: lb://customer-service
+          predicates:
+            - Path=/api/customers/**
+
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/orders/**
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+# POC only - a real deployment pulls this from a secret manager/env var,
+# used only for the gateway's own /auth/login-issued tokens.
+jwt:
+  secret: "poc-only-shared-secret-change-me-before-any-real-use-32bytes+"
+  expiration-minutes: 60
+
+# Real OIDC provider (Keycloak, running locally in Docker - see
+# scripts/keycloak/realm-import.json for the realm/client/user it imports).
+# The gateway verifies tokens against this JWKS; it never talks to Keycloak
+# to issue tokens itself.
+keycloak:
+  jwk-set-uri: http://localhost:8180/realms/microservices-poc/protocol/openid-connect/certs
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO

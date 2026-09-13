@@ -4,10 +4,12 @@ import com.poc.customer.entity.Customer;
 import com.poc.customer.service.CustomerService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -21,12 +23,15 @@ public class CustomerController {
         this.service = service;
     }
 
-    // GET /api/customers            -> all customers
-    // GET /api/customers?name=raj   -> filtered by name
+    // GET /api/customers                    -> all customers
+    // GET /api/customers?name=raj            -> filtered by name
+    // GET /api/customers?date=2026-09-12     -> filtered by creation date
+    // GET /api/customers?name=raj&date=...   -> both filters combined
     @GetMapping
     public ResponseEntity<List<Customer>> getCustomers(
-            @RequestParam(required = false) String name) {
-        return ResponseEntity.ok(service.getCustomers(name));
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(service.getCustomers(name, date));
     }
 
     @GetMapping("/{id}")

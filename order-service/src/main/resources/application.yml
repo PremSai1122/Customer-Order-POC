@@ -27,7 +27,11 @@ eureka:
     service-url:
       defaultZone: http://localhost:8761/eureka/
   instance:
-    prefer-ip-address: true
+    # Single-machine POC - register by hostname=localhost rather than an
+    # auto-detected LAN IP, which is unreliable on a host with multiple
+    # network interfaces (Docker, VPN, etc.).
+    prefer-ip-address: false
+    hostname: localhost
 
 management:
   endpoints:

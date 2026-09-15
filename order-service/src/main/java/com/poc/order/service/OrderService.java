@@ -3,6 +3,8 @@ package com.poc.order.service;
 import com.poc.order.entity.Order;
 import com.poc.order.exception.OrderNotFoundException;
 import com.poc.order.repository.OrderRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -14,6 +16,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class OrderService {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     private final OrderRepository repository;
 
@@ -47,12 +51,15 @@ public class OrderService {
     // this correct without needing #result, which @CacheEvict doesn't expose.
     @CacheEvict(value = "ordersByCustomer", allEntries = true)
     public Order addOrder(Order order) {
-        return repository.save(order);
+        Order saved = repository.save(order);
+        log.debug("Persisted order {}", saved.getId());
+        return saved;
     }
 
     @CacheEvict(value = "ordersByCustomer", allEntries = true)
     public void deleteOrder(Long id) {
         Order order = getOrderById(id);
         repository.delete(order);
+        log.debug("Deleted order {}", id);
     }
 }

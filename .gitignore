@@ -8,6 +8,7 @@ target/
 .DS_Store
 
 .claude/settings.local.json
+CLAUDE.md
 
 *.log
 Steps and explaination of POC.pages

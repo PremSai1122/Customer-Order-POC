@@ -3,6 +3,8 @@ package com.poc.customer.service;
 import com.poc.customer.entity.Customer;
 import com.poc.customer.exception.CustomerNotFoundException;
 import com.poc.customer.repository.CustomerRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -15,6 +17,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class CustomerService {
+
+    private static final Logger log = LoggerFactory.getLogger(CustomerService.class);
 
     private final CustomerRepository repository;
 
@@ -46,7 +50,9 @@ public class CustomerService {
 
     @CacheEvict(value = "customers", allEntries = true)
     public Customer addCustomer(Customer customer) {
-        return repository.save(customer);
+        Customer saved = repository.save(customer);
+        log.debug("Persisted customer {}", saved.getId());
+        return saved;
     }
 
     // Soft delete: flips active/inactive rather than removing the row,
@@ -55,6 +61,8 @@ public class CustomerService {
     public Customer setCustomerActiveStatus(Long id, boolean active) {
         Customer customer = getCustomerById(id);
         customer.setActive(active);
-        return repository.save(customer);
+        Customer saved = repository.save(customer);
+        log.debug("Customer {} active status now {}", saved.getId(), saved.isActive());
+        return saved;
     }
 }

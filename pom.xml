@@ -47,4 +47,19 @@
         </dependencies>
     </dependencyManagement>
 
+    <build>
+        <plugins>
+            <!-- Without this, `mvn clean install` emits a plain jar containing only
+                 this module's classes - `java -jar target/<module>.jar` then fails with
+                 "no main manifest attribute". Declaring it here (inherited by every
+                 module) makes each module repackage into an executable fat jar, so the
+                 services can be started without going through `mvn spring-boot:run`.
+                 The goal is a no-op for this pom-packaged parent. -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>

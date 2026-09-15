@@ -15,23 +15,56 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: update   # POC only - use migrations (Flyway/Liquibase) for real projects
+    # Defaults to true, which holds the Hibernate session - and with it a pooled
+    # database connection - open for the whole request, including response
+    # serialisation. Off here: every query already runs inside a @Transactional
+    # service method, so nothing needs a session later, and connections go back
+    # to the pool as soon as the service method returns.
+    open-in-view: false
+    # SQL logging is a development switch, not a default. Left on, every query
+    # is formatted and written to stdout on the request thread, which dominates
+    # the cost of the small queries this service runs. Turn it back on for one
+    # run with: --spring.jpa.show-sql=true
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # No explicit hibernate.dialect: Hibernate 6 detects PostgreSQL from the
+        # JDBC connection, and setting it by hand logs HHH90000025 at every
+        # startup telling you to remove it.
+
+  # spring-boot-starter-cache with no provider on the classpath falls back to a
+  # plain ConcurrentHashMap that has no size limit and no expiry - entries added
+  # by @Cacheable are only ever removed by an explicit @CacheEvict, so a service
+  # queried with many distinct filter values grows its heap until it dies.
+  # Caffeine gives the same annotations a bounded, self-expiring store.
+  cache:
+    type: caffeine
+    cache-names: ordersByCustomer
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=120s,recordStats
 
 eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
+    # Pull the registry every 5s instead of every 30s, so a newly started
+    # dependency is discoverable almost immediately.
+    registry-fetch-interval-seconds: 5
   instance:
     # Single-machine POC - register by hostname=localhost rather than an
     # auto-detected LAN IP, which is unreliable on a host with multiple
     # network interfaces (Docker, VPN, etc.).
     prefer-ip-address: false
     hostname: localhost
+    # Eureka's defaults (30s renew, 90s expiry) are tuned for large clusters where
+    # heartbeat traffic matters. On a single-machine POC they are just latency:
+    # a freshly started service takes ~30s to become callable, and a killed one
+    # lingers in the registry for ~90s - long enough to mask whether a circuit
+    # breaker or a stale registry entry caused a failed call.
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 10
 
 management:
   endpoints:

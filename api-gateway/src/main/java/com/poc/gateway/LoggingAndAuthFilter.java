@@ -9,6 +9,7 @@ import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
@@ -22,14 +23,16 @@ import reactor.core.publisher.Mono;
  *
  * Accepts either of two token kinds: the gateway's own self-issued HS256
  * token (from /auth/login, backed by app_user in auth_db) or a real
- * Keycloak-issued RS256 token (from a genuine OIDC login). Local
- * validation is tried first since it's a cheap in-process signature check;
- * OIDC validation involves a call out to Keycloak's JWKS endpoint.
+ * Keycloak-issued RS256 token (from a genuine OIDC login). The token's
+ * own header says which kind it claims to be, so each request runs exactly
+ * one signature check instead of always attempting the local one first and
+ * treating its failure as "must be a Keycloak token".
  */
 @Component
 public class LoggingAndAuthFilter implements GlobalFilter, Ordered {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingAndAuthFilter.class);
+    private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtUtil jwtUtil;
     private final OidcJwtValidator oidcJwtValidator;
@@ -41,46 +44,52 @@ public class LoggingAndAuthFilter implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        var request = exchange.getRequest();
-        long start = System.currentTimeMillis();
+        ServerHttpRequest request = exchange.getRequest();
+        long start = System.nanoTime();
 
-        log.info("--> {} {}", request.getMethod(), request.getURI());
+        // Log the path, not the full URI - query strings routinely carry ids and
+        // filter values that don't belong in an access log.
+        log.info("--> {} {}", request.getMethod(), request.getPath());
 
         String authHeader = request.getHeaders().getFirst("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            log.warn("Rejected {} {} - missing/malformed Authorization header", request.getMethod(), request.getURI());
+        if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
+            log.warn("Rejected {} {} - missing/malformed Authorization header",
+                    request.getMethod(), request.getPath());
             return reject(exchange, HttpStatus.UNAUTHORIZED);
         }
-        String token = authHeader.substring(7);
+        String token = authHeader.substring(BEARER_PREFIX.length());
 
-        boolean validLocalToken;
-        try {
-            jwtUtil.validateAndGetClaims(token);
-            validLocalToken = true;
-        } catch (JwtException e) {
-            validLocalToken = false;
-        }
-
-        if (validLocalToken) {
+        if (jwtUtil.looksLocallyIssued(token)) {
+            try {
+                jwtUtil.validateAndGetClaims(token);
+            } catch (JwtException e) {
+                log.warn("Rejected {} {} - local token failed validation: {}",
+                        request.getMethod(), request.getPath(), e.getMessage());
+                return reject(exchange, HttpStatus.UNAUTHORIZED);
+            }
             return proceed(exchange, chain, request, start);
         }
 
         return oidcJwtValidator.validate(token)
                 .flatMap(jwt -> proceed(exchange, chain, request, start))
                 .onErrorResume(e -> {
-                    log.warn("Rejected {} {} - invalid token (neither local nor Keycloak accepted it): {}",
-                            request.getMethod(), request.getURI(), e.getMessage());
+                    log.warn("Rejected {} {} - Keycloak rejected the token: {}",
+                            request.getMethod(), request.getPath(), e.getMessage());
                     return reject(exchange, HttpStatus.UNAUTHORIZED);
                 });
     }
 
     private Mono<Void> proceed(ServerWebExchange exchange, GatewayFilterChain chain,
-                                org.springframework.http.server.reactive.ServerHttpRequest request, long start) {
+                                ServerHttpRequest request, long start) {
         return chain.filter(exchange)
-                .then(Mono.fromRunnable(() -> {
-                    long duration = System.currentTimeMillis() - start;
-                    log.info("<-- {} {} ({} ms)", request.getMethod(), request.getURI(), duration);
-                }));
+                .doFinally(signal -> {
+                    // doFinally rather than then(...) so the response line is still
+                    // logged when the client disconnects or the chain errors, and so
+                    // the timing covers the whole exchange.
+                    long millis = (System.nanoTime() - start) / 1_000_000;
+                    log.info("<-- {} {} {} ({} ms)", request.getMethod(), request.getPath(),
+                            exchange.getResponse().getStatusCode(), millis);
+                });
     }
 
     private Mono<Void> reject(ServerWebExchange exchange, HttpStatus status) {

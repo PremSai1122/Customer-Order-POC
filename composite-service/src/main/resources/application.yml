@@ -8,17 +8,48 @@ spring:
     openfeign:
       circuitbreaker:
         enabled: true   # wires Resilience4j into every @FeignClient automatically
+      httpclient:
+        hc5:
+          enabled: true   # pooled Apache HttpClient 5 instead of per-call HttpURLConnection
+        max-connections: 200
+        max-connections-per-route: 50
+      client:
+        config:
+          default:
+            # These must stay BELOW the Resilience4j timeout-duration of 3s below.
+            # The time limiter only abandons the CompletableFuture; the worker
+            # thread underneath stays blocked on the socket until the HTTP client
+            # itself gives up. With Feign's defaults (10s connect / 60s read) a
+            # hung order-service would keep tying up threads for up to a minute
+            # after the circuit breaker had already reported the call as failed.
+            connect-timeout: 1000
+            read-timeout: 2500
+  loadbalancer:
+    cache:
+      # Matches the 5s Eureka registry poll - the default 35s client-side cache
+      # would otherwise keep handing out an instance that has already gone away.
+      ttl: 5s
 
 eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
+    # Pull the registry every 5s instead of every 30s, so a newly started
+    # dependency is discoverable almost immediately.
+    registry-fetch-interval-seconds: 5
   instance:
     # Single-machine POC - register by hostname=localhost rather than an
     # auto-detected LAN IP, which is unreliable on a host with multiple
     # network interfaces (Docker, VPN, etc.).
     prefer-ip-address: false
     hostname: localhost
+    # Eureka's defaults (30s renew, 90s expiry) are tuned for large clusters where
+    # heartbeat traffic matters. On a single-machine POC they are just latency:
+    # a freshly started service takes ~30s to become callable, and a killed one
+    # lingers in the registry for ~90s - long enough to mask whether a circuit
+    # breaker or a stale registry entry caused a failed call.
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 10
 
 resilience4j:
   circuitbreaker:

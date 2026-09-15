@@ -14,6 +14,12 @@ eureka:
     # Fine for local/POC use - disables self-preservation so dead instances
     # drop off the dashboard quickly instead of lingering
     enable-self-preservation: false
+    # Eureka serves reads from a response cache that it refreshes every 30s by
+    # default, so a registration can sit invisible for up to 30s even after the
+    # client has registered. That cap, not the client poll interval, is what
+    # makes services appear slowly on the dashboard.
+    response-cache-update-interval-ms: 5000
+    eviction-interval-timer-in-ms: 5000
 
 logging:
   level:

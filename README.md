@@ -118,8 +118,39 @@ mvn spring-boot:run -pl api-gateway
 ```
 
 Watch the Eureka dashboard (http://localhost:8761) - you should see all 4
-app instances (gateway, customer, order, composite) register within ~30s,
+app instances (gateway, customer, order, composite) register within ~5s,
 all listed under `hostname: localhost` (see note below on why that matters).
+
+The Eureka heartbeat and cache intervals are deliberately shortened from
+their cluster-sized defaults (30s renew / 90s expiry / 30s registry cache),
+which is what makes registration show up in seconds rather than half a
+minute, and makes a service you kill disappear in ~10s rather than ~90s.
+Those defaults exist to keep heartbeat traffic down in large deployments
+and are worth restoring if this ever runs as more than a local POC.
+
+### Or run the built jars
+
+`mvn clean install` now repackages each module into an executable jar, so
+the services can also be started without Maven in the loop - handy when you
+want all five running from one terminal:
+
+```bash
+mvn clean install -DskipTests
+java -jar discovery-server/target/discovery-server-1.0.0.jar
+java -jar customer-service/target/customer-service-1.0.0.jar
+java -jar order-service/target/order-service-1.0.0.jar
+java -jar composite-service/target/composite-service-1.0.0.jar
+java -jar api-gateway/target/api-gateway-1.0.0.jar
+```
+
+Any setting can be overridden per run, which is the easiest way to bring up
+a second isolated stack beside a running one:
+
+```bash
+java -jar customer-service/target/customer-service-1.0.0.jar \
+  --server.port=9081 \
+  --eureka.client.service-url.defaultZone=http://localhost:9761/eureka/
+```
 
 ## Try it
 

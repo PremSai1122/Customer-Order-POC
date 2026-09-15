@@ -34,12 +34,22 @@ eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
+    # Pull the registry every 5s instead of every 30s, so a newly started
+    # dependency is discoverable almost immediately.
+    registry-fetch-interval-seconds: 5
   instance:
     # Single-machine POC - register by hostname=localhost rather than an
     # auto-detected LAN IP, which is unreliable on a host with multiple
     # network interfaces (Docker, VPN, etc.).
     prefer-ip-address: false
     hostname: localhost
+    # Eureka's defaults (30s renew, 90s expiry) are tuned for large clusters where
+    # heartbeat traffic matters. On a single-machine POC they are just latency:
+    # a freshly started service takes ~30s to become callable, and a killed one
+    # lingers in the registry for ~90s - long enough to mask whether a circuit
+    # breaker or a stale registry entry caused a failed call.
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 10
 
 # POC only - a real deployment pulls this from a secret manager/env var,
 # used only for the gateway's own /auth/login-issued tokens.

@@ -1,13 +1,22 @@
 package com.poc.order.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "orders")
+// Every read path in this service filters on customer_id - findByCustomerId is
+// what composite-service calls on each combined customer+orders view. Without
+// these indexes Postgres full-scans the orders table for every one of those
+// calls. ddl-auto=update creates them on next startup; on a pre-existing
+// database they can also be added by hand with CREATE INDEX.
+@Table(name = "orders", indexes = {
+        @Index(name = "idx_orders_customer_id", columnList = "customer_id"),
+        @Index(name = "idx_orders_customer_product", columnList = "customer_id, product_id")
+})
 public class Order {
 
     @Id
@@ -22,10 +31,15 @@ public class Order {
     @Column(name = "customer_id", nullable = false)
     private Long customerId;
 
-    @NotNull
+    // @NotBlank, not @NotNull: the column is non-nullable, but "" and "   " would
+    // both pass a null check and then persist as a meaningless product id.
+    @NotBlank
     @Column(name = "product_id", nullable = false)
     private String productId;
 
+    // @Positive on its own passes when quantity is null, which then fails at the
+    // database as a 500 rather than being reported as a 400 with a clear message.
+    @NotNull
     @Positive
     @Column(nullable = false)
     private Integer quantity;

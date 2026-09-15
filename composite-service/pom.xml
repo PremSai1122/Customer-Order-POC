@@ -31,6 +31,15 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>
         </dependency>
+        <!-- Feign's default client is java.net.HttpURLConnection, which opens a new
+             TCP connection per call and pools nothing. Every composite request makes
+             one or two outbound calls, so each one paid for a fresh connection setup.
+             feign-hc5 swaps in Apache HttpClient 5 with a real connection pool
+             (sized in application.yml). -->
+        <dependency>
+            <groupId>io.github.openfeign</groupId>
+            <artifactId>feign-hc5</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>

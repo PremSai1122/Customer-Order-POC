@@ -139,9 +139,10 @@ TOKEN=$(curl -s -X POST http://localhost:8080/auth/login \
   -d '{"username":"raj","password":"S3cure!Pass"}' | python3 -c "import json,sys;print(json.load(sys.stdin)['token'])")
 
 # Place an order THROUGH the gateway -> composite -> customer + order
+# productId is a plain numeric id (Long), not a "P100"-style code
 curl -X POST http://localhost:8080/api/composite/orders \
   -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
-  -d '{"customerId":1,"productId":"P-100","quantity":2}'
+  -d '{"customerId":1,"productId":100,"quantity":2}'
 
 # Combined view: customer + all their orders, one call
 curl http://localhost:8080/api/composite/customers/1/orders \
@@ -150,6 +151,16 @@ curl http://localhost:8080/api/composite/customers/1/orders \
 # Filter customers by name and/or creation date (direct to the service)
 curl "http://localhost:8081/api/customers?name=raj"
 curl "http://localhost:8081/api/customers?date=2026-09-12"
+
+# Customer listing is active-only by default; includeInactive=true also
+# returns soft-deleted (inactive) customers
+curl "http://localhost:8081/api/customers?includeInactive=true"
+
+# Orders: customerId is optional - omit it for every order, or narrow by
+# customerId and, optionally, productId
+curl "http://localhost:8082/api/orders"
+curl "http://localhost:8082/api/orders?customerId=1"
+curl "http://localhost:8082/api/orders?customerId=1&productId=100"
 ```
 
 A ready-to-import Postman collection covering every endpoint (including

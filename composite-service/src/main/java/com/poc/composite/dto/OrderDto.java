@@ -10,14 +10,14 @@ public class OrderDto {
 
     private Long id;
     private Long customerId;
-    private String productId;
+    private Long productId;
     private Integer quantity;
     private String status;
 
     public OrderDto() {
     }
 
-    public OrderDto(Long customerId, String productId, Integer quantity) {
+    public OrderDto(Long customerId, Long productId, Integer quantity) {
         this.customerId = customerId;
         this.productId = productId;
         this.quantity = quantity;
@@ -29,8 +29,8 @@ public class OrderDto {
     public Long getCustomerId() { return customerId; }
     public void setCustomerId(Long customerId) { this.customerId = customerId; }
 
-    public String getProductId() { return productId; }
-    public void setProductId(String productId) { this.productId = productId; }
+    public Long getProductId() { return productId; }
+    public void setProductId(Long productId) { this.productId = productId; }
 
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }

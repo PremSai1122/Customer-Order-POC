@@ -31,13 +31,16 @@ public class CustomerService {
     // otherwise you can do filtering also" - by name, by creation date, or
     // both. The date filter and the name-ascending sort are done with
     // Java 8 streams rather than another repository query per combination.
-    @Cacheable(value = "customers", key = "(#name != null ? #name : 'ALL') + '_' + (#date != null ? #date.toString() : 'ANY')")
-    public List<Customer> getCustomers(String name, LocalDate date) {
+    // Active-only by default - includeInactive=true opts into seeing
+    // soft-deleted (inactive) customers too.
+    @Cacheable(value = "customers", key = "(#name != null ? #name : 'ALL') + '_' + (#date != null ? #date.toString() : 'ANY') + '_' + #includeInactive")
+    public List<Customer> getCustomers(String name, LocalDate date, boolean includeInactive) {
         List<Customer> base = (name != null && !name.isBlank())
                 ? repository.findByNameContainingIgnoreCase(name)
                 : repository.findAll();
 
         return base.stream()
+                .filter(c -> includeInactive || c.isActive())
                 .filter(c -> date == null || (c.getCreatedDate() != null && c.getCreatedDate().toLocalDate().equals(date)))
                 .sorted(Comparator.comparing(Customer::getName, String.CASE_INSENSITIVE_ORDER))
                 .collect(Collectors.toList());

@@ -36,8 +36,17 @@ public class OrderService {
                 .collect(Collectors.toList());
     }
 
-    public List<Order> getOrdersByCustomerAndProduct(Long customerId, String productId) {
+    public List<Order> getOrdersByCustomerAndProduct(Long customerId, Long productId) {
         return repository.findByCustomerIdAndProductId(customerId, productId).stream()
+                .sorted(Comparator.comparing(Order::getOrderDate).reversed())
+                .collect(Collectors.toList());
+    }
+
+    // No customerId filter - returns every order. Cached like the per-customer
+    // lookups so an unfiltered listing doesn't hit the database on every call.
+    @Cacheable(value = "ordersByCustomer", key = "'ALL'")
+    public List<Order> getAllOrders() {
+        return repository.findAll().stream()
                 .sorted(Comparator.comparing(Order::getOrderDate).reversed())
                 .collect(Collectors.toList());
     }

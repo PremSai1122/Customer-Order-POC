@@ -25,16 +25,22 @@ public class OrderController {
         this.service = service;
     }
 
+    // GET /api/orders                            -> all orders
     // GET /api/orders?customerId=1                -> all orders for a customer
-    // GET /api/orders?customerId=1&productId=P100 -> narrowed to one product
+    // GET /api/orders?customerId=1&productId=100  -> narrowed to one product
     @GetMapping
     public ResponseEntity<List<Order>> getOrders(
-            @RequestParam Long customerId,
-            @RequestParam(required = false) String productId) {
+            @RequestParam(required = false) Long customerId,
+            @RequestParam(required = false) Long productId) {
         log.info("Fetching orders: customerId={}, productId={}", customerId, productId);
-        List<Order> orders = (productId != null && !productId.isBlank())
-                ? service.getOrdersByCustomerAndProduct(customerId, productId)
-                : service.getOrdersByCustomer(customerId);
+        List<Order> orders;
+        if (customerId == null) {
+            orders = service.getAllOrders();
+        } else if (productId != null) {
+            orders = service.getOrdersByCustomerAndProduct(customerId, productId);
+        } else {
+            orders = service.getOrdersByCustomer(customerId);
+        }
         log.debug("Found {} order(s) for customerId={}", orders.size(), customerId);
         return ResponseEntity.ok(orders);
     }

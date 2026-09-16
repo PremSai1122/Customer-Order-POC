@@ -24,7 +24,7 @@ public class Order {
 
     @NotNull
     @Column(name = "product_id", nullable = false)
-    private String productId;
+    private Long productId;
 
     @Positive
     @Column(nullable = false)
@@ -44,7 +44,7 @@ public class Order {
     public Order() {
     }
 
-    public Order(Long customerId, String productId, Integer quantity) {
+    public Order(Long customerId, Long productId, Integer quantity) {
         this.customerId = customerId;
         this.productId = productId;
         this.quantity = quantity;
@@ -56,8 +56,8 @@ public class Order {
     public Long getCustomerId() { return customerId; }
     public void setCustomerId(Long customerId) { this.customerId = customerId; }
 
-    public String getProductId() { return productId; }
-    public void setProductId(String productId) { this.productId = productId; }
+    public Long getProductId() { return productId; }
+    public void setProductId(Long productId) { this.productId = productId; }
 
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }

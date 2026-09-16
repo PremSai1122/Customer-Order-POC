@@ -27,16 +27,19 @@ public class CustomerController {
         this.service = service;
     }
 
-    // GET /api/customers                    -> all customers
-    // GET /api/customers?name=raj            -> filtered by name
-    // GET /api/customers?date=2026-09-12     -> filtered by creation date
-    // GET /api/customers?name=raj&date=...   -> both filters combined
+    // GET /api/customers                       -> active customers only
+    // GET /api/customers?name=raj               -> filtered by name (active only)
+    // GET /api/customers?date=2026-09-12         -> filtered by creation date (active only)
+    // GET /api/customers?includeInactive=true    -> active and inactive customers
+    // GET /api/customers?name=raj&date=...       -> filters combined
     @GetMapping
     public ResponseEntity<List<Customer>> getCustomers(
             @RequestParam(required = false) String name,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        log.info("Fetching customers: nameFilterApplied={}, date={}", name != null && !name.isBlank(), date);
-        List<Customer> customers = service.getCustomers(name, date);
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false, defaultValue = "false") boolean includeInactive) {
+        log.info("Fetching customers: nameFilterApplied={}, date={}, includeInactive={}",
+                name != null && !name.isBlank(), date, includeInactive);
+        List<Customer> customers = service.getCustomers(name, date, includeInactive);
         log.debug("Found {} customer(s)", customers.size());
         return ResponseEntity.ok(customers);
     }

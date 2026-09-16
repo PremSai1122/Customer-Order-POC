@@ -125,7 +125,7 @@
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerId\": {{customerId}},\n  \"productId\": \"P-100\",\n  \"quantity\": 2\n}"
+              "raw": "{\n  \"customerId\": {{customerId}},\n  \"productId\": 100,\n  \"quantity\": 2\n}"
             },
             "url": {
               "raw": "{{gateway_url}}/api/composite/orders",
@@ -238,7 +238,7 @@
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerId\": {{customerId}},\n  \"productId\": \"P-200\",\n  \"quantity\": 1\n}"
+              "raw": "{\n  \"customerId\": {{customerId}},\n  \"productId\": 200,\n  \"quantity\": 1\n}"
             },
             "url": {
               "raw": "{{gateway_url}}/api/orders",
@@ -314,7 +314,7 @@
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerId\": {{customerId}},\n  \"productId\": \"P-300\",\n  \"quantity\": 3\n}"
+              "raw": "{\n  \"customerId\": {{customerId}},\n  \"productId\": 300,\n  \"quantity\": 3\n}"
             },
             "url": {
               "raw": "{{order_direct_url}}/api/orders",

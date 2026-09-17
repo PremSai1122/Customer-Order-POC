@@ -1,48 +1,51 @@
 {
   "info": {
     "name": "Customer & Order Microservices POC",
-    "description": "Auth (local + Keycloak), api-gateway routed calls, and direct-to-service calls for the customer/order/composite microservices POC.",
+    "description": "Local JWT auth, api-gateway routed calls (composite only), and direct-to-service calls for the customer/order/composite microservices POC.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
     "type": "bearer",
     "bearer": [
-      { "key": "token", "value": "{{token}}", "type": "string" }
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
     ]
   },
   "variable": [
-    { "key": "gateway_url", "value": "http://localhost:8080" },
-    { "key": "customer_direct_url", "value": "http://localhost:8081" },
-    { "key": "order_direct_url", "value": "http://localhost:8082" },
-    { "key": "keycloak_url", "value": "http://localhost:8180" },
-    { "key": "token", "value": "" },
-    { "key": "customerId", "value": "1" },
-    { "key": "orderId", "value": "1" }
+    {
+      "key": "gateway_url",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "customer_direct_url",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "order_direct_url",
+      "value": "http://localhost:8082"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "customerId",
+      "value": "1"
+    },
+    {
+      "key": "orderId",
+      "value": "1"
+    }
   ],
   "item": [
     {
       "name": "Auth",
       "item": [
         {
-          "name": "Register (local)",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"username\": \"raj\",\n  \"password\": \"S3cure!Pass\"\n}"
-            },
-            "url": {
-              "raw": "{{gateway_url}}/auth/register",
-              "host": [ "{{gateway_url}}" ],
-              "path": [ "auth", "register" ]
-            },
-            "description": "Creates a user in auth_db (bcrypt-hashed password). 409 if the username already exists."
-          }
-        },
-        {
-          "name": "Login (local) - sets {{token}}",
+          "name": "Login - sets {{token}}",
           "event": [
             {
               "listen": "test",
@@ -59,58 +62,31 @@
             }
           ],
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"username\": \"raj\",\n  \"password\": \"S3cure!Pass\"\n}"
             },
             "url": {
               "raw": "{{gateway_url}}/auth/login",
-              "host": [ "{{gateway_url}}" ],
-              "path": [ "auth", "login" ]
-            },
-            "description": "Verifies the password against the bcrypt hash in auth_db and returns a gateway-issued JWT. Saves it into the {{token}} collection variable for every other request in this collection."
-          }
-        },
-        {
-          "name": "Get Token (Keycloak) - sets {{token}}",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const data = pm.response.json();",
-                  "if (data.access_token) {",
-                  "    pm.collectionVariables.set('token', data.access_token);",
-                  "    console.log('Saved Keycloak token to {{token}}');",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/x-www-form-urlencoded" } ],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                { "key": "client_id", "value": "gateway-client" },
-                { "key": "grant_type", "value": "password" },
-                { "key": "username", "value": "demo" },
-                { "key": "password", "value": "demo123" },
-                { "key": "scope", "value": "openid" }
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
               ]
             },
-            "url": {
-              "raw": "{{keycloak_url}}/realms/microservices-poc/protocol/openid-connect/token",
-              "host": [ "{{keycloak_url}}" ],
-              "path": [ "realms", "microservices-poc", "protocol", "openid-connect", "token" ]
-            },
-            "description": "Gets a real OIDC token from Keycloak for the demo user (demo/demo123). The gateway accepts this token exactly like a local one. Saves it into {{token}}."
+            "description": "Checks the credentials against the gateway's jwt.users map in application.yml and returns an HS256 JWT signed with jwt.secret. There is no registration endpoint and no user database - add users by editing jwt.users and restarting the gateway. Saves the token into the {{token}} collection variable for every other request."
           }
         }
       ]
@@ -122,15 +98,26 @@
           "name": "Place Order",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"customerId\": {{customerId}},\n  \"productId\": 100,\n  \"quantity\": 2\n}"
             },
             "url": {
               "raw": "{{gateway_url}}/api/composite/orders",
-              "host": [ "{{gateway_url}}" ],
-              "path": [ "api", "composite", "orders" ]
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "api",
+                "composite",
+                "orders"
+              ]
             },
             "description": "Verifies the customer exists/is active via customer-service, then creates the order via order-service."
           }
@@ -142,25 +129,39 @@
             "header": [],
             "url": {
               "raw": "{{gateway_url}}/api/composite/customers/{{customerId}}/orders",
-              "host": [ "{{gateway_url}}" ],
-              "path": [ "api", "composite", "customers", "{{customerId}}", "orders" ]
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "api",
+                "composite",
+                "customers",
+                "{{customerId}}",
+                "orders"
+              ]
             },
             "description": "Combined view - one call, customer info plus every order they've placed."
           }
         }
-      ]
+      ],
+      "description": "The only paths the gateway routes. Every request needs a bearer token from Auth > Login."
     },
     {
-      "name": "Gateway -> Customer Service (auth required)",
+      "name": "Customer Service (direct, no auth)",
       "item": [
         {
           "name": "Get All Customers",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{gateway_url}}/api/customers",
-              "host": [ "{{gateway_url}}" ],
-              "path": [ "api", "customers" ]
+              "raw": "{{customer_direct_url}}/api/customers",
+              "host": [
+                "{{customer_direct_url}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
             }
           }
         },
@@ -169,9 +170,15 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{gateway_url}}/api/customers/{{customerId}}",
-              "host": [ "{{gateway_url}}" ],
-              "path": [ "api", "customers", "{{customerId}}" ]
+              "raw": "{{customer_direct_url}}/api/customers/{{customerId}}",
+              "host": [
+                "{{customer_direct_url}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{customerId}}"
+              ]
             }
           }
         },
@@ -179,15 +186,25 @@
           "name": "Create Customer",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Asha Rao\",\n  \"email\": \"asha@example.com\",\n  \"phone\": \"9999900000\"\n}"
             },
             "url": {
-              "raw": "{{gateway_url}}/api/customers",
-              "host": [ "{{gateway_url}}" ],
-              "path": [ "api", "customers" ]
+              "raw": "{{customer_direct_url}}/api/customers",
+              "host": [
+                "{{customer_direct_url}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
             }
           }
         },
@@ -196,27 +213,53 @@
           "request": {
             "method": "PATCH",
             "url": {
-              "raw": "{{gateway_url}}/api/customers/{{customerId}}/status?active=false",
-              "host": [ "{{gateway_url}}" ],
-              "path": [ "api", "customers", "{{customerId}}", "status" ],
-              "query": [ { "key": "active", "value": "false" } ]
+              "raw": "{{customer_direct_url}}/api/customers/{{customerId}}/status?active=false",
+              "host": [
+                "{{customer_direct_url}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{customerId}}",
+                "status"
+              ],
+              "query": [
+                {
+                  "key": "active",
+                  "value": "false"
+                }
+              ]
             }
           }
         }
-      ]
+      ],
+      "description": "api-gateway routes /api/composite/** only, so these go straight to customer-service on 8081. No token is needed.",
+      "auth": {
+        "type": "noauth"
+      }
     },
     {
-      "name": "Gateway -> Order Service (auth required)",
+      "name": "Order Service (direct, no auth)",
       "item": [
         {
           "name": "Get Orders By Customer",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{gateway_url}}/api/orders?customerId={{customerId}}",
-              "host": [ "{{gateway_url}}" ],
-              "path": [ "api", "orders" ],
-              "query": [ { "key": "customerId", "value": "{{customerId}}" } ]
+              "raw": "{{order_direct_url}}/api/orders?customerId={{customerId}}",
+              "host": [
+                "{{order_direct_url}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{customerId}}"
+                }
+              ]
             }
           }
         },
@@ -225,9 +268,15 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{gateway_url}}/api/orders/{{orderId}}",
-              "host": [ "{{gateway_url}}" ],
-              "path": [ "api", "orders", "{{orderId}}" ]
+              "raw": "{{order_direct_url}}/api/orders/{{orderId}}",
+              "host": [
+                "{{order_direct_url}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{orderId}}"
+              ]
             }
           }
         },
@@ -235,15 +284,25 @@
           "name": "Create Order",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"customerId\": {{customerId}},\n  \"productId\": 200,\n  \"quantity\": 1\n}"
             },
             "url": {
-              "raw": "{{gateway_url}}/api/orders",
-              "host": [ "{{gateway_url}}" ],
-              "path": [ "api", "orders" ]
+              "raw": "{{order_direct_url}}/api/orders",
+              "host": [
+                "{{order_direct_url}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
             }
           }
         },
@@ -252,79 +311,23 @@
           "request": {
             "method": "DELETE",
             "url": {
-              "raw": "{{gateway_url}}/api/orders/{{orderId}}",
-              "host": [ "{{gateway_url}}" ],
-              "path": [ "api", "orders", "{{orderId}}" ]
+              "raw": "{{order_direct_url}}/api/orders/{{orderId}}",
+              "host": [
+                "{{order_direct_url}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{orderId}}"
+              ]
             }
           }
         }
-      ]
-    },
-    {
-      "name": "Direct to services (bypasses gateway, no auth)",
-      "item": [
-        {
-          "name": "Customer Service - Get All",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "url": {
-              "raw": "{{customer_direct_url}}/api/customers",
-              "host": [ "{{customer_direct_url}}" ],
-              "path": [ "api", "customers" ]
-            }
-          }
-        },
-        {
-          "name": "Customer Service - Create",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Asha Rao\",\n  \"email\": \"asha@example.com\",\n  \"phone\": \"9999900000\"\n}"
-            },
-            "url": {
-              "raw": "{{customer_direct_url}}/api/customers",
-              "host": [ "{{customer_direct_url}}" ],
-              "path": [ "api", "customers" ]
-            },
-            "description": "Direct to customer-service, port 8081 - bypasses api-gateway entirely, so no token is needed. Useful for testing one service in isolation."
-          }
-        },
-        {
-          "name": "Order Service - Get By Customer",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "url": {
-              "raw": "{{order_direct_url}}/api/orders?customerId={{customerId}}",
-              "host": [ "{{order_direct_url}}" ],
-              "path": [ "api", "orders" ],
-              "query": [ { "key": "customerId", "value": "{{customerId}}" } ]
-            }
-          }
-        },
-        {
-          "name": "Order Service - Create",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"customerId\": {{customerId}},\n  \"productId\": 300,\n  \"quantity\": 3\n}"
-            },
-            "url": {
-              "raw": "{{order_direct_url}}/api/orders",
-              "host": [ "{{order_direct_url}}" ],
-              "path": [ "api", "orders" ]
-            },
-            "description": "Direct to order-service, port 8082 - bypasses api-gateway entirely, so no token is needed."
-          }
-        }
-      ]
+      ],
+      "description": "api-gateway routes /api/composite/** only, so these go straight to order-service on 8082. No token is needed.",
+      "auth": {
+        "type": "noauth"
+      }
     }
   ]
 }

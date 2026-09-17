@@ -4,31 +4,19 @@ server:
 spring:
   application:
     name: api-gateway
-  r2dbc:
-    url: r2dbc:postgresql://localhost:5432/auth_db
-    username: postgres
-    password: postgres
   cloud:
     gateway:
-      routes:
-        # Everything the client calls goes through the composite service,
-        # which itself talks to customer-service and order-service.
-        - id: composite-service
-          uri: lb://composite-service
-          predicates:
-            - Path=/api/composite/**
-
-        # Optional: expose the atomic services directly too, useful while
-        # you're testing each one in isolation.
-        - id: customer-service
-          uri: lb://customer-service
-          predicates:
-            - Path=/api/customers/**
-
-        - id: order-service
-          uri: lb://order-service
-          predicates:
-            - Path=/api/orders/**
+      server:
+        webflux:
+          routes:
+            # The composite service is the only thing exposed through the
+            # gateway. customer-service and order-service are reachable only
+            # via composite-service, not directly through this edge - so the
+            # orchestration layer is never bypassed.
+            - id: composite-service
+              uri: lb://composite-service
+              predicates:
+                - Path=/api/composite/**
 
 eureka:
   client:
@@ -41,18 +29,20 @@ eureka:
     prefer-ip-address: false
     hostname: localhost
 
-# POC only - a real deployment pulls this from a secret manager/env var,
-# used only for the gateway's own /auth/login-issued tokens.
+# Local-only auth. There is no identity provider and no database: the same
+# symmetric secret both signs tokens (JwtEncoder) and verifies them
+# (ReactiveJwtDecoder) - see SecurityConfig.
+#
+# POC only - a real deployment pulls the secret from a secret manager or an
+# environment variable, and keeps users somewhere other than a config file.
+# HS256 needs at least 256 bits, so this secret must stay >= 32 characters.
 jwt:
   secret: "poc-only-shared-secret-change-me-before-any-real-use-32bytes+"
-  expiration-minutes: 60
-
-# Real OIDC provider (Keycloak, running locally in Docker - see
-# scripts/keycloak/realm-import.json for the realm/client/user it imports).
-# The gateway verifies tokens against this JWKS; it never talks to Keycloak
-# to issue tokens itself.
-keycloak:
-  jwk-set-uri: http://localhost:8180/realms/microservices-poc/protocol/openid-connect/certs
+  expiration-ms: 3600000   # 1 hour
+  # Credentials accepted by POST /auth/login, checked as plain text.
+  users:
+    raj: "S3cure!Pass"
+    demo: "demo123"
 
 logging:
   level:

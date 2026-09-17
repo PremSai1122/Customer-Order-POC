@@ -5,6 +5,7 @@ import com.poc.composite.client.OrderClient;
 import com.poc.composite.dto.CustomerDto;
 import com.poc.composite.dto.CustomerOrdersResponse;
 import com.poc.composite.dto.OrderDto;
+import com.poc.composite.exception.ApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,24 +43,26 @@ public class CompositeController {
 
         CustomerDto customer = customerClient.getCustomerById(orderRequest.getCustomerId());
 
+        // customer == null and placedOrder == null (below) are thrown as
+        // ApiException and logged once, by GlobalExceptionHandler - no
+        // log.warn/log.error here to avoid a duplicate.
         if (customer == null) {
-            log.warn("Rejecting order - customer {} not found or customer-service unavailable",
-                    orderRequest.getCustomerId());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Customer " + orderRequest.getCustomerId() + " not found or customer-service unavailable");
+            throw new ApiException(HttpStatus.NOT_FOUND,
+                    "Customer " + orderRequest.getCustomerId() + " not found or customer-service unavailable");
         }
         log.debug("Customer {} found, active={}", customer.getId(), customer.isActive());
         if (!customer.isActive()) {
-            log.warn("Rejecting order - customer {} is inactive", orderRequest.getCustomerId());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Customer " + orderRequest.getCustomerId() + " is inactive");
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Customer " + orderRequest.getCustomerId() + " is inactive");
         }
 
         OrderDto placedOrder = orderClient.addOrder(orderRequest);
         if (placedOrder == null) {
-            log.error("order-service unavailable - order not placed for customerId={}", orderRequest.getCustomerId());
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body("order-service unavailable, order not placed");
+            // Circuit breaker fallback path (OrderClientFallback.addOrder
+            // returning null) - the fallback mechanism itself is unchanged,
+            // only this user-facing message.
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Order service is currently unavailable. Please try again after some time.");
         }
 
         log.info("Order {} placed successfully for customerId={}", placedOrder.getId(), orderRequest.getCustomerId());
@@ -77,8 +80,9 @@ public class CompositeController {
 
         CustomerDto customer = customerClient.getCustomerById(id);
         if (customer == null) {
-            log.warn("Customer {} not found or customer-service unavailable", id);
-            return ResponseEntity.notFound().build();
+            // Thrown as ApiException and logged once, by
+            // GlobalExceptionHandler - no log.warn here to avoid a duplicate.
+            throw new ApiException(HttpStatus.NOT_FOUND, "Customer " + id + " not found or customer-service unavailable");
         }
 
         var orders = orderClient.getOrdersByCustomer(id);

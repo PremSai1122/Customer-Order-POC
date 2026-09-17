@@ -17,10 +17,10 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    @ExceptionHandler(OrderNotFoundException.class)
-    public ResponseEntity<Object> handleNotFound(OrderNotFoundException ex) {
-        log.warn("Not found: {}", ex.getMessage());
-        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<Object> handleApiException(ApiException ex) {
+        log.warn("{} - {}", ex.getStatus(), ex.getMessage());
+        return buildResponse(ex.getStatus(), ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

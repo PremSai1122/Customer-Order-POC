@@ -1,4 +1,4 @@
-package com.poc.customer.exception;
+package com.poc.composite.exception;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

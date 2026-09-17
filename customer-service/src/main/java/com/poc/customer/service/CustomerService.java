@@ -1,13 +1,14 @@
 package com.poc.customer.service;
 
 import com.poc.customer.entity.Customer;
-import com.poc.customer.exception.CustomerNotFoundException;
+import com.poc.customer.exception.ApiException;
 import com.poc.customer.repository.CustomerRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -35,20 +36,28 @@ public class CustomerService {
     // soft-deleted (inactive) customers too.
     @Cacheable(value = "customers", key = "(#name != null ? #name : 'ALL') + '_' + (#date != null ? #date.toString() : 'ANY') + '_' + #includeInactive")
     public List<Customer> getCustomers(String name, LocalDate date, boolean includeInactive) {
+        log.info("Querying customers: name={}, date={}, includeInactive={}", name, date, includeInactive);
         List<Customer> base = (name != null && !name.isBlank())
                 ? repository.findByNameContainingIgnoreCase(name)
                 : repository.findAll();
 
-        return base.stream()
+        List<Customer> result = base.stream()
                 .filter(c -> includeInactive || c.isActive())
                 .filter(c -> date == null || (c.getCreatedDate() != null && c.getCreatedDate().toLocalDate().equals(date)))
                 .sorted(Comparator.comparing(Customer::getName, String.CASE_INSENSITIVE_ORDER))
                 .collect(Collectors.toList());
+        log.debug("Query matched {} customer(s)", result.size());
+        return result;
     }
 
     public Customer getCustomerById(Long id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new CustomerNotFoundException(id));
+        log.info("Looking up customer {}", id);
+        // Not found is thrown as ApiException and logged once, by
+        // GlobalExceptionHandler - no log.warn here to avoid a duplicate.
+        Customer customer = repository.findById(id)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Customer not found with id: " + id));
+        log.debug("Found customer {}: active={}", customer.getId(), customer.isActive());
+        return customer;
     }
 
     @CacheEvict(value = "customers", allEntries = true)

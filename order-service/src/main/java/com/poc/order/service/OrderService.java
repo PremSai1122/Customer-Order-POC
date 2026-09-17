@@ -1,13 +1,14 @@
 package com.poc.order.service;
 
 import com.poc.order.entity.Order;
-import com.poc.order.exception.OrderNotFoundException;
+import com.poc.order.exception.ApiException;
 import com.poc.order.repository.OrderRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -31,29 +32,43 @@ public class OrderService {
     // demonstrating that approach per the requirements checklist.
     @Cacheable(value = "ordersByCustomer", key = "#customerId")
     public List<Order> getOrdersByCustomer(Long customerId) {
-        return repository.findByCustomerId(customerId).stream()
+        log.info("Querying orders for customerId={}", customerId);
+        List<Order> orders = repository.findByCustomerId(customerId).stream()
                 .sorted(Comparator.comparing(Order::getOrderDate).reversed())
                 .collect(Collectors.toList());
+        log.debug("Query matched {} order(s) for customerId={}", orders.size(), customerId);
+        return orders;
     }
 
     public List<Order> getOrdersByCustomerAndProduct(Long customerId, Long productId) {
-        return repository.findByCustomerIdAndProductId(customerId, productId).stream()
+        log.info("Querying orders for customerId={}, productId={}", customerId, productId);
+        List<Order> orders = repository.findByCustomerIdAndProductId(customerId, productId).stream()
                 .sorted(Comparator.comparing(Order::getOrderDate).reversed())
                 .collect(Collectors.toList());
+        log.debug("Query matched {} order(s) for customerId={}, productId={}", orders.size(), customerId, productId);
+        return orders;
     }
 
     // No customerId filter - returns every order. Cached like the per-customer
     // lookups so an unfiltered listing doesn't hit the database on every call.
     @Cacheable(value = "ordersByCustomer", key = "'ALL'")
     public List<Order> getAllOrders() {
-        return repository.findAll().stream()
+        log.info("Querying all orders");
+        List<Order> orders = repository.findAll().stream()
                 .sorted(Comparator.comparing(Order::getOrderDate).reversed())
                 .collect(Collectors.toList());
+        log.debug("Query matched {} order(s)", orders.size());
+        return orders;
     }
 
     public Order getOrderById(Long id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new OrderNotFoundException(id));
+        log.info("Looking up order {}", id);
+        // Not found is thrown as ApiException and logged once, by
+        // GlobalExceptionHandler - no log.warn here to avoid a duplicate.
+        Order order = repository.findById(id)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Order not found with id: " + id));
+        log.debug("Found order {}: status={}", order.getId(), order.getStatus());
+        return order;
     }
 
     // Evicting the whole cache (rather than a single customerId key) keeps

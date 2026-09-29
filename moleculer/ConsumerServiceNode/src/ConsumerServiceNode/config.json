@@ -1,0 +1,20 @@
+{
+  "app": {
+    "name": "CONSUMER-SERVICE",
+    "host": "localhost",
+    "port": 3002
+  },
+  "moleculer": {
+    "namespace": "poc",
+    "logLevel": "info"
+  },
+  "eureka": {
+    "host": "localhost",
+    "port": 8761,
+    "servicePath": "/eureka/apps/"
+  },
+  "javaService": {
+    "appName": "CUSTOMER-SERVICE",
+    "path": "/api/customers"
+  }
+}

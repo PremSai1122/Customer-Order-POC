@@ -1,0 +1,18 @@
+{
+  "name": "consumerservicenode",
+  "version": "1.0.0",
+  "description": "Moleculer POC - Consumer microservice (calls User Profile service via Eureka + axios)",
+  "main": "src/ConsumerServiceNode/index.js",
+  "scripts": {
+    "start": "node src/ConsumerServiceNode/index.js"
+  },
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.20.0",
+    "eureka-js-client": "^4.5.0",
+    "moleculer": "^0.14.36",
+    "moleculer-web": "^0.10.8",
+    "winston": "^3.19.0"
+  }
+}

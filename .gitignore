@@ -12,3 +12,7 @@ CLAUDE.md
 
 *.log
 Steps and explaination of POC.pages
+
+# moleculer (Node.js POC)
+moleculer/**/node_modules/
+moleculer/**/logs/
